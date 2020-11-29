@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class UsersController < ApplicationController
   def index
     @users = User.all
@@ -8,36 +10,39 @@ class UsersController < ApplicationController
     render_404 unless @user
   end
 
-  def login_form
-  end
+  def create
+    auth_hash = request.env['omniauth.auth']
 
-  def login
-    username = params[:username]
-    if username and user = User.find_by(username: username)
-      session[:user_id] = user.id
-      flash[:status] = :success
-      flash[:result_text] = "Successfully logged in as existing user #{user.username}"
+    user = User.find_by(uid: auth_hash[:uid], provider: 'github') # params[:provider])
+
+    if user
+      # user exists
+      flash[:success] = "Existing user #{user.username} is logged in."
     else
-      user = User.new(username: username)
+      # user doesn't exist yet
+      user = User.build_from_github(auth_hash)
       if user.save
-        session[:user_id] = user.id
-        flash[:status] = :success
-        flash[:result_text] = "Successfully created new user #{user.username} with ID #{user.id}"
+        flash[:success] = "Logged in as new user #{user.username}"
       else
-        flash.now[:status] = :failure
-        flash.now[:result_text] = "Could not log in"
-        flash.now[:messages] = user.errors.messages
-        render "login_form", status: :bad_request
-        return
+        flash[:error] = "Could not create user account #{user.errors.full_messages.join(', ')}"
       end
     end
+
+    session[:user_id] = user.id
+    session[:username] = user.username
     redirect_to root_path
+    nil
   end
 
-  def logout
-    session[:user_id] = nil
-    flash[:status] = :success
-    flash[:result_text] = "Successfully logged out"
-    redirect_to root_path
+  def destroy
+    if session[:user_id]
+      session[:user_id] = nil
+      flash[:status] = 'Successfully logged out'
+      redirect_to root_path
+      nil
+    else
+      flash[:error] = 'Must log in first!'
+      redirect_to root_path
+    end
   end
 end
