@@ -54,6 +54,16 @@
     </nav>
   </header>
 
+  <% if flash.any? %>
+  <section class="alert__container">
+    <% flash.each do  |name, message| %>
+      <div class="<%= name.to_s == "error" ? "alert alert-danger" : "alert alert-success" %>">
+        <%= message %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
   <% if flash[:result_text] or flash[:messages] %>
     <section class="alert__container">
       <div class="alert alert-<%= flash[:status].to_s == 'failure' ? 'warning' : flash[:status] %>">
